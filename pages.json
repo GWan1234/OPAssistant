@@ -35,6 +35,15 @@
 		    }
 		},
 		{
+		    "path" : "pages/device/cellular",
+		    "style" :                                                                                    
+		    {
+		        "navigationBarTitleText": "%cellular.title%",
+		        "enablePullDownRefresh": true
+		    }
+		},
+		/**
+		{
 		    "path" : "pages/device/statistics",
 		    "style" :                                                                                    
 		    {
@@ -42,6 +51,7 @@
 		        "enablePullDownRefresh": true
 		    }
 		},
+		*/
 		{
 		    "path" : "pages/device/client",
 		    "style" :                                                                                    
@@ -216,11 +226,19 @@
 					"pagePath":"pages/device/home"
 				},
 				{
+					"iconPath":"static/internet-cellular.png",
+					"selectedIconPath":"static/internet-cellular-selected.png",
+					"text":"cellular",
+					"pagePath":"pages/device/cellular"
+				},
+				/**
+				{
 					"iconPath":"static/align-bottom.png",
 					"selectedIconPath":"static/align-bottom-selected.png",
 					"text":"statistics",
 					"pagePath":"pages/device/statistics"
 				},
+				*/
 				{
 					"iconPath":"static/user.png",
 					"selectedIconPath":"static/user-selected.png",
