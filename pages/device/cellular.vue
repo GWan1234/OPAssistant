@@ -2,24 +2,14 @@
 	<view class="container">
 		<view class="header" :style="{ height: statusBarHeight }"></view>
 		<oa-page-tab :tabs="tabList" v-model="currentTab" />
-		<!-- 调试面板（可删除）
-		<view class="nav-header" style="display: flex; align-items: center; position: relative;">
-			<view style="flex: 1; display: flex; justify-content: center; position: absolute; left: 0; right: 0; pointer-events: none;">
-				<text style="font-size: 32rpx; font-weight: bold; color: #fff;">{{ $t('cellular.title') }}</text>
-			</view>
-		</view>
-
-		<view style="background:#f5f5f5;padding:20rpx;margin:10rpx;border-radius:12rpx;font-size:24rpx;word-break:break-all;">
-			<text style="font-weight:bold;">📊 Debug - cellInfoList</text>
-			<text>\n{{ JSON.stringify(cellInfoList) }}</text>
-		</view>
-		 -->
 
 		<scroll-view scroll-y="true" class="scroll-area">
+			<!-- ========== Tab 0: CPE信息 ========== -->
 			<view v-if="currentTab === 0">
 				<oa-empty v-if="isLoading" :text="$t('cellular.loading')" />
-				<oa-empty v-else-if="modemInfoList.length === 0 && cellInfoList.length === 0" :text="$t('cellular.no_data')" />
+				<oa-empty v-else-if="modemInfoList.length === 0 && cellInfoList.length === 0 && neighborCellList.length === 0" :text="$t('cellular.no_data')" />
 				<view v-else>
+					<!-- Modem 信息卡片 -->
 					<oa-card v-if="modemInfoList.length > 0" padding="lg">
 						<view class="iface-header center-icon">
 							<view class="operator-wrapper">
@@ -54,14 +44,7 @@
 							<!-- 运营商名称 -->
 							<view class="iface-protoh">{{ getOperatorName(operatorInfoList) }}</view>
 						</view>
-					</oa-card>
-
-					<!-- Modem 详细信息 -->
-					<oa-card v-if="cellInfoList.length > 0" padding="lg">
-						<view class="iface-header">
-							<view class="iface-title">{{ $t('cellular.CPEhardware') }}</view>
-							<view class="iface-proto">{{ $t('cellular.cell') }}</view>
-						</view>
+						<!-- Modem 详细信息 -->
 						<view class="iface-body">
 							<view class="client-row" v-for="(item, index) in modemInfoList" :key="'info-'+index">
 								<text class="label">{{ item.label }}：</text>
@@ -70,10 +53,10 @@
 						</view>
 					</oa-card>
 
-					<!-- Cell 信息 -->
+					<!-- Cell 信息卡片 -->
 					<oa-card v-if="cellInfoList.length > 0" padding="lg">
 						<view class="iface-header">
-							<view class="iface-title">{{ $t('cellular.CPEinfo') }}</view>
+							<view class="iface-title">{{ $t('cellular.cell') }}</view>
 							<view class="iface-proto">{{ $t('cellular.cell') }}</view>
 						</view>
 						<view class="iface-body">
@@ -83,10 +66,35 @@
 							</view>
 						</view>
 					</oa-card>
+
+					<!-- 邻区信息卡片 -->
+					<oa-card v-if="neighborCellList.length > 0" padding="lg">
+						<view class="iface-header">
+							<view class="iface-title">{{ $t('cellular.neighbor_cell') }}</view>
+							<view class="iface-proto">LTE</view>
+						</view>
+						<view class="neighbor-table">
+							<view class="neighbor-header">
+								<text class="col arfcn">ARFCN</text>
+								<text class="col pci">PCI</text>
+								<text class="col rsrp">RSRP</text>
+								<text class="col rsrq">RSRQ</text>
+							</view>
+							<view class="neighbor-row" v-for="(cell, idx) in neighborCellList" :key="idx">
+								<text class="col arfcn">{{ cell.arfcn || '--' }}</text>
+								<text class="col pci">{{ cell.pci || '--' }}</text>
+								<text class="col rsrp">{{ cell.rsrp || '--' }}</text>
+								<text class="col rsrq">{{ cell.rsrq || '--' }}</text>
+							</view>
+						</view>
+						<view v-if="neighborLockStatus" class="lock-status">
+							<text>{{ $t('cellular.lock_status') }}：{{ neighborLockStatus }}</text>
+						</view>
+					</oa-card>
 				</view>
 			</view>
 
-			<!-- Tab1: 硬件 -->
+			<!-- ========== Tab 1: 硬件信息 ========== -->
 			<view v-else-if="currentTab === 1">
 				<oa-empty v-if="isLoading" :text="$t('cellular.loading')" />
 				<oa-empty v-else-if="baseInfoList.length === 0" :text="$t('cellular.no_data')" />
@@ -104,11 +112,12 @@
 				</oa-card>
 			</view>
 
-			<!-- Tab2: 设置 -->
+			<!-- ========== Tab 2: 网络设置 ========== -->
 			<view v-else-if="currentTab === 2">
 				<oa-empty v-if="isLoading" :text="$t('cellular.loading')" />
-				<oa-empty v-else-if="simInfoList.length === 0 && netInfoList.length === 0" :text="$t('cellular.no_data')" />
+				<oa-empty v-else-if="simInfoList.length === 0 && netInfoList.length === 0 && !lockBandData.availableBandList.length && !lockBandData.lockBandList.length" :text="$t('cellular.no_data')" />
 				<view v-else>
+					<!-- SIM 卡状态 -->
 					<oa-card v-if="simInfoList.length > 0" padding="lg">
 						<view class="iface-header">
 							<view class="iface-title">{{ $t('cellular.sim_card_status') }}</view>
@@ -122,6 +131,7 @@
 						</view>
 					</oa-card>
 
+					<!-- 网络设置 -->
 					<oa-card v-if="netInfoList.length > 0" padding="lg">
 						<view class="iface-header">
 							<view class="iface-title">{{ $t('cellular.CPEsetting') }}</view>
@@ -132,6 +142,51 @@
 								<text class="label">{{ item.label }}：</text>
 								<oa-copy-text class="value" :text="item.value">{{ item.value }}</oa-copy-text>
 							</view>
+						</view>
+					</oa-card>
+
+					<!-- 锁频段卡片 -->
+					<oa-card v-if="lockBandData.availableBandList.length || lockBandData.lockBandList.length" padding="lg">
+						<view class="iface-header">
+							<view class="iface-title">{{ $t('cellular.band_lock') }}</view>
+							<view class="iface-proto">LTE</view>
+						</view>
+						<view class="band-section">
+							<text class="band-title">{{ $t('cellular.available_bands') }}</text>
+							<view class="band-tags">
+								<view class="tag available" v-for="band in lockBandData.availableBandList" :key="band.band_id">
+									{{ band.band_name }}
+								</view>
+							</view>
+						</view>
+						<view class="band-section">
+							<text class="band-title">{{ $t('cellular.locked_bands') }}</text>
+							<view class="band-tags">
+								<view class="tag locked" v-for="bandId in lockBandData.lockBandList" :key="bandId">
+									{{ getBandNameById(bandId) || bandId }}
+								</view>
+							</view>
+						</view>
+					</oa-card>
+				</view>
+			</view>
+
+			<!-- ========== Tab 3: 短信（含历史） ========== -->
+			<view v-else-if="currentTab === 3">
+				<oa-empty v-if="isLoading" :text="$t('cellular.loading')" />
+				<oa-empty v-else-if="smsList.length === 0" :text="$t('cellular.no_data')" />
+				<view v-else>
+					<oa-card padding="lg" v-for="(sms, idx) in smsList" :key="sms.id || idx">
+						<view class="sms-item">
+							<view class="sms-header">
+								<view class="sms-sender-wrapper">
+									<text class="sms-sender">📩 {{ sms.sender }}</text>
+									<!-- 未读标记 -->
+									<text v-if="sms.is_read === false" class="sms-unread">{{ $t('cellular.unread') }}</text>
+								</view>
+								<text class="sms-time">{{ formatTimestamp(sms.timestamp) }}</text>
+							</view>
+							<view class="sms-content">{{ sms.content || '--' }}</view>
 						</view>
 					</oa-card>
 				</view>
@@ -156,6 +211,13 @@ export default {
 			baseInfoList: [],
 			netInfoList: [],
 			simInfoList: [],
+			smsList: [],
+			neighborCellList: [],
+			neighborLockStatus: '',
+			lockBandData: {
+				availableBandList: [],
+				lockBandList: []
+			},
 			isLoading: false,
 			requestLock: false
 		}
@@ -165,7 +227,8 @@ export default {
 			return [
 				{ value: 0, label: this.$t('cellular.CPEinfo') },
 				{ value: 1, label: this.$t('cellular.CPEhardware') },
-				{ value: 2, label: this.$t('cellular.CPEsetting') }
+				{ value: 2, label: this.$t('cellular.CPEsetting') },
+				{ value: 3, label: this.$t('cellular.sms') }
 			]
 		},
 		operatorInfoList() {
@@ -210,14 +273,15 @@ export default {
 			return new Promise(resolve => setTimeout(resolve, ms)); 
 		},
 
-		fetchDataPromise(methodName) {
+		// ===== 通用 ubus 调用 =====
+		fetchDataPromise(methodName, params = { config_section: '1_1_4' }) {
 			return new Promise((resolve) => {
 				uni.request({
 					method: 'POST',
 					url: this.url,
 					data: {
 						jsonrpc: '2.0', id: 1, method: 'call',
-						params: [this.session, 'qmodem', methodName, { config_section: '1_1_4' }]
+						params: [this.session, 'qmodem', methodName, params]
 					},
 					header: { 'Content-Type': 'application/json' },
 					timeout: 8000,
@@ -230,11 +294,41 @@ export default {
 			});
 		},
 
+		// ===== 读取文件（用于历史短信） =====
+		fetchFileReadPromise(path) {
+			return new Promise((resolve) => {
+				uni.request({
+					method: 'POST',
+					url: this.url,
+					data: {
+						jsonrpc: '2.0', id: 1, method: 'call',
+						params: [this.session, 'file', 'read', { path }]
+					},
+					header: { 'Content-Type': 'application/json' },
+					timeout: 8000,
+					success: (res) => resolve(res),
+					fail: (err) => { 
+						console.error('文件读取失败:', err);
+						resolve(null); 
+					}
+				});
+			});
+		},
+
 		getApiListByTab(tabIndex) {
 			switch(tabIndex) {
-				case 0: return [{ name: 'info', key: 'modemInfoList' }, { name: 'cell_info', key: 'cellInfoList' }];
+				case 0: return [
+					{ name: 'info', key: 'modemInfoList' },
+					{ name: 'cell_info', key: 'cellInfoList' },
+					{ name: 'get_neighborcell', key: 'neighborCellList' }
+				];
 				case 1: return [{ name: 'base_info', key: 'baseInfoList' }];
-				case 2: return [{ name: 'sim_info', key: 'simInfoList' }, { name: 'network_info', key: 'netInfoList' }];
+				case 2: return [
+					{ name: 'sim_info', key: 'simInfoList' },
+					{ name: 'network_info', key: 'netInfoList' },
+					{ name: 'get_lockband', key: 'lockBandData' }
+				];
+				case 3: return [{ name: 'get_sms', key: 'smsList' }];
 				default: return [];
 			}
 		},
@@ -244,17 +338,63 @@ export default {
 			this.requestLock = true;
 			this.isLoading = true;
 
-			const currentTasks = this.getApiListByTab(this.currentTab);
-			currentTasks.forEach(task => { this[task.key] = [] });
+			const currentTab = this.currentTab;
+			const currentTasks = this.getApiListByTab(currentTab);
+			// 重置数据
+			currentTasks.forEach(task => {
+				if (task.key === 'lockBandData') {
+					this.lockBandData = { availableBandList: [], lockBandList: [] };
+				} else {
+					this[task.key] = [];
+				}
+			});
 
 			try {
-				for (let i = 0; i < currentTasks.length; i++) {
-					const task = currentTasks[i];
-					const res = await this.fetchDataPromise(task.name);
-					if (res && res.data && res.data.result) {
-						this[task.key] = this.transformToKvArray(res, task.name);
+				// ===== 短信 Tab 特殊处理：合并历史短信 =====
+				if (currentTab === 3) {
+					// 1. 获取实时短信
+					const smsRes = await this.fetchDataPromise('get_sms');
+					let realtimeSms = [];
+					if (smsRes && smsRes.data && smsRes.data.result) {
+						realtimeSms = smsRes.data.result[1]?.msg || [];
 					}
-					if (i < currentTasks.length - 1) await this.sleep(500);
+					// 2. 读取历史短信文件
+					let historySms = [];
+					const fileRes = await this.fetchFileReadPromise('/etc/qmodem/1_1_4_received.json');
+					if (fileRes && fileRes.data && fileRes.data.result) {
+						const rawData = fileRes.data.result[1];
+						if (rawData && rawData.data) {
+							try {
+								const parsed = JSON.parse(rawData.data);
+								historySms = parsed.received || [];
+							} catch (e) {
+								console.error('解析历史短信JSON失败:', e);
+							}
+						}
+					}
+					// 3. 合并去重并排序
+					const merged = this.mergeSmsLists(realtimeSms, historySms);
+					this.smsList = merged;
+				} else {
+					// 其他 tab 正常处理
+					for (let i = 0; i < currentTasks.length; i++) {
+						const task = currentTasks[i];
+						const res = await this.fetchDataPromise(task.name);
+						if (res && res.data && res.data.result) {
+							if (task.name === 'get_neighborcell') {
+								const neighborData = res.data.result[1]?.neighborcell || {};
+								this.neighborCellList = neighborData.LTE || [];
+								this.neighborLockStatus = neighborData.lockcell_status?.lockcell_status || '';
+							} else if (task.name === 'get_lockband') {
+								const lteData = res.data.result[1]?.lockband?.Lte || {};
+								this.lockBandData.availableBandList = lteData.available_band || [];
+								this.lockBandData.lockBandList = lteData.lock_band || [];
+							} else {
+								this[task.key] = this.transformToKvArray(res, task.name);
+							}
+						}
+						if (i < currentTasks.length - 1) await this.sleep(500);
+					}
 				}
 			} catch (err) {
 				console.error('加载数据失败：', err);
@@ -264,7 +404,27 @@ export default {
 			}
 		},
 
-		// ===== 核心修正：安全转换数据 =====
+		// ===== 合并短信列表（去重 + 排序） =====
+		mergeSmsLists(realtime, history) {
+			const map = new Map();
+			// 先放历史（保留更完整的字段）
+			history.forEach(item => {
+				map.set(item.id, { ...item });
+			});
+			// 再放实时（若 id 冲突则忽略，若无则添加，并给实时数据补一个 id）
+			realtime.forEach((item, index) => {
+				const id = item.id !== undefined ? item.id : `realtime_${item.index ?? index}`;
+				if (!map.has(id)) {
+					map.set(id, { ...item, id });
+				}
+			});
+			// 转为数组并按时间戳降序（最新的在前）
+			const result = Array.from(map.values());
+			result.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+			return result;
+		},
+
+		// ===== 数据转换 =====
 		transformToKvArray(res, type) {
 			try {
 				if (!res.data || !res.data.result || !res.data.result[1]) return []
@@ -275,39 +435,28 @@ export default {
 
 				const processItem = (item) => {
 					if (!item) return null
-					// 从对象中提取字段
 					let key = item.key || ''
 					let fullName = item.full_name || ''
 					let value = item.value
 
-					// 若没有 key，尝试使用 fullName 作为 key
 					if (!key && fullName) key = fullName
+					if (!key && !fullName) return null
 
-					if (!key && fullName) {
-						// 如果都没有，跳过该项
-						return null
-					}
-
-					// 国际化：优先用 fullName，其次用 key
 					let label = null
 					if (fullName) {
 						const i18nKey = `cellular.fields.${fullName}`
-						if (this.$te(i18nKey)) {
-							label = this.$t(i18nKey)
-						}
+						if (this.$te(i18nKey)) label = this.$t(i18nKey)
 					}
 					if (!label && key) {
 						const i18nKey = `cellular.fields.${key}`
-						if (this.$te(i18nKey)) {
-							label = this.$t(i18nKey)
-						}
+						if (this.$te(i18nKey)) label = this.$t(i18nKey)
 					}
 					if (!label) {
 						label = fullName || this.formatLabel(key)
 					}
 
 					return {
-						rawKey: key,               // 后端的 key（如 "MCC"）
+						rawKey: key,
 						label: label,
 						value: (value !== undefined && value !== null && value !== '') ? String(value) : '--',
 						fullName: fullName
@@ -322,8 +471,6 @@ export default {
 						.map(key => processItem({ key, value: sourceData[key] }))
 						.filter(item => item !== null)
 				}
-
-				// 过滤掉 rawKey 为空或 "Unknown" 的项（避免显示无用数据）
 				return result.filter(item => item.rawKey && item.rawKey !== 'Unknown')
 			} catch (e) {
 				console.error('transformToKvArray 出错:', e)
@@ -336,7 +483,22 @@ export default {
 			return key.toString().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 		},
 
-		// ===== 运营商 MCC/MNC 提取（支持更多字段） =====
+		// ===== 时间格式化 =====
+		formatTimestamp(ts) {
+			if (!ts) return '--'
+			const date = new Date(ts * 1000)
+			if (isNaN(date.getTime())) return '--'
+			const pad = (n) => String(n).padStart(2, '0')
+			return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+		},
+
+		// ===== 根据 band_id 获取 band_name =====
+		getBandNameById(id) {
+			const band = this.lockBandData.availableBandList.find(b => b.band_id === id)
+			return band ? band.band_name : id
+		},
+
+		// ===== 运营商相关 =====
 		getMccMnc(list) {
 			let mcc = null, mnc = null
 			if (!Array.isArray(list) || list.length === 0) {
@@ -349,7 +511,6 @@ export default {
 				const value = String(item.value || '').trim()
 				const lowerKey = rawKey.toLowerCase()
 
-				// 直接匹配
 				if (lowerKey === 'mcc' || lowerKey === 'home_mcc' || lowerKey.includes('mcc')) {
 					mcc = value
 				}
@@ -357,13 +518,11 @@ export default {
 					mnc = value
 				}
 
-				// 组合字段 plmn / operator
 				if ((lowerKey.includes('plmn') || lowerKey.includes('operator')) && /^\d{5,6}$/.test(value)) {
 					mcc = value.substring(0, 3)
 					mnc = value.substring(3)
 				}
 
-				// 如果值是 5~6 位数字（后备）
 				if ((!mcc || !mnc) && /^\d{5,6}$/.test(value)) {
 					mcc = value.substring(0, 3)
 					mnc = value.substring(3)
@@ -371,8 +530,6 @@ export default {
 
 				if (mcc && mnc) break
 			}
-
-			// 调试输出（上线后可注释）
 			console.log('提取 MCC/MNC:', { mcc, mnc })
 			return { mcc, mnc }
 		},
@@ -403,7 +560,7 @@ export default {
 			return this.$t('cellular.operators.unknown')
 		},
 
-		// 带宽（保留原逻辑，增加保护）
+		// ===== 带宽 =====
 		getBandwidth(type) {
 			const sourceList = [
 				...(this.modemInfoList || []),
@@ -433,7 +590,7 @@ export default {
 			return item.value
 		},
 
-		// 温度/电压
+		// ===== 温度/电压 =====
 		getModuleInfo(type) {
 			const sourceList = [
 				...(this.modemInfoList || []),
@@ -472,28 +629,25 @@ page {
 }
 .container {
 	padding: 20rpx;
-	/* 新增 Flex 布局属性 */
 	display: flex;
 	flex-direction: column;
-	height: 100vh; /* 或者使用 100% */
-	box-sizing: border-box; /* 防止 padding 导致内容溢出屏幕 */
+	height: 100vh;
+	box-sizing: border-box;
 }
 .header { 
 	background: transparent; 
-	flex-shrink: 0; /* 防止头部被挤压 */
+	flex-shrink: 0;
 }
-/* 确保 tab 组件也不会被挤压 */
 oa-page-tab {
-	flex-shrink: 0; 
+	flex-shrink: 0;
 }
-
-/* 新增 scroll-view 的自适应样式 */
 .scroll-area {
-	flex: 1; /* 自动撑满下方所有剩余空间 */
-	height: 0; /* 必须加 height:0，否则部分小程序的 scroll-view 会失去滚动效果 */
-	margin-top: 10rpx; /* 可选，与上方的 tab 拉开一点间隙 */
+	flex: 1;
+	height: 0;
+	margin-top: 10rpx;
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+	box-sizing: border-box;
 }
-.nav-header { margin-bottom: 20rpx; }
 
 .client-row {
 	display: flex;
@@ -618,5 +772,117 @@ oa-page-tab {
 	font-size: 26rpx;
 	font-weight: bold;
 	color: #6572CC;
+}
+
+/* ===== 邻区表格样式 ===== */
+.neighbor-table {
+	margin-top: 10rpx;
+	background: #f8f9fc;
+	border-radius: 12rpx;
+	padding: 12rpx 16rpx;
+}
+.neighbor-header, .neighbor-row {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	padding: 8rpx 0;
+	border-bottom: 1rpx solid $oa-hairline;
+}
+.neighbor-header {
+	font-weight: bold;
+	color: $oa-text-muted;
+	font-size: 24rpx;
+}
+.neighbor-row:last-child {
+	border-bottom: none;
+}
+.col {
+	flex: 1;
+	text-align: center;
+	font-size: 26rpx;
+	color: $oa-text;
+}
+.col.arfcn { flex: 1.2; }
+.col.pci { flex: 1; }
+.col.rsrp { flex: 1; }
+.col.rsrq { flex: 1; }
+
+.lock-status {
+	margin-top: 16rpx;
+	font-size: 26rpx;
+	color: $oa-text-muted;
+	text-align: center;
+}
+
+/* ===== 锁频段样式 ===== */
+.band-section {
+	margin-bottom: 24rpx;
+}
+.band-title {
+	display: block;
+	font-size: 28rpx;
+	font-weight: bold;
+	color: $oa-text;
+	margin-bottom: 12rpx;
+}
+.band-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+.tag {
+	padding: 6rpx 20rpx;
+	border-radius: 20rpx;
+	font-size: 26rpx;
+	background: #f0f0f0;
+	color: $oa-text;
+}
+.tag.available {
+	background: #e8f5e9;
+	color: #2e7d32;
+}
+.tag.locked {
+	background: #ffebee;
+	color: #c62828;
+}
+
+/* ===== 短信卡片样式（新增未读标记） ===== */
+.sms-item {
+	padding: 10rpx 0;
+}
+.sms-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12rpx;
+}
+.sms-sender-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+.sms-sender {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: $oa-text;
+}
+.sms-unread {
+	font-size: 22rpx;
+	color: #ff4d4f;
+	background: #fff1f0;
+	padding: 2rpx 12rpx;
+	border-radius: 20rpx;
+}
+.sms-time {
+	font-size: 24rpx;
+	color: $oa-text-muted;
+}
+.sms-content {
+	font-size: 28rpx;
+	color: $oa-text;
+	padding: 10rpx 20rpx;
+	background: #f5f7fa;
+	border-radius: 12rpx;
+	word-break: break-all;
 }
 </style>
