@@ -54,8 +54,14 @@
 							<!-- 运营商名称 -->
 							<view class="iface-protoh">{{ getOperatorName(operatorInfoList) }}</view>
 						</view>
-						
-						<!-- Modem 详细信息 -->
+					</oa-card>
+
+					<!-- Modem 详细信息 -->
+					<oa-card v-if="cellInfoList.length > 0" padding="lg">
+						<view class="iface-header">
+							<view class="iface-title">{{ $t('cellular.CPEhardware') }}</view>
+							<view class="iface-proto">{{ $t('cellular.cell') }}</view>
+						</view>
 						<view class="iface-body">
 							<view class="client-row" v-for="(item, index) in modemInfoList" :key="'info-'+index">
 								<text class="label">{{ item.label }}：</text>
