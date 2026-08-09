@@ -195,6 +195,8 @@
 
 "cellular": {
   "title": "Cellular",
+  "config_section": "Modem Section",
+  "model": "Model",
   "CPEinfo": "Info",
   "CPEhardware": "Hardware Info",
   "overview": "Overview",
@@ -212,6 +214,7 @@
   "CPEsetting": "Network Settings",
   "normal": "Normal",
   "sms": "SMS",
+  "unread": "unread", 
   "neighbor_cell": "Neighbor Cells",
   "lock_status": "Lock Status",
   "band_lock": "Band Lock",
