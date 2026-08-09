@@ -204,6 +204,7 @@
   "cell": "Cell",
   "loading": "Loading...",
   "no_data": "No Data",
+  "subscribed_data_rate": "Subscribed Data Rate",
   "uplink": "Uplink",
   "downlink": "Downlink",
   "temperature": "Temperature",
