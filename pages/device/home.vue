@@ -370,7 +370,7 @@
 			},
 			updateTabBarText() {
 				uni.setTabBarItem({ index: 0, text: this.$t('tabbar.home') })
-				uni.setTabBarItem({ index: 1, text: this.$t('tabbar.statistics') })
+				uni.setTabBarItem({ index: 1, text: this.$t('tabbar.cellular') })
 				uni.setTabBarItem({ index: 2, text: this.$t('tabbar.clients') })
 				uni.setTabBarItem({ index: 3, text: this.$t('tabbar.network') })
 				uni.setTabBarItem({ index: 4, text: this.$t('tabbar.apps') })

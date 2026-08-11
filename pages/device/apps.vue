@@ -27,6 +27,7 @@ import DeviceManager from '@/utils/device-manager.js'
 
 // 固定系统工具（始终显示，Font Awesome 图标）
 const TOOLS = [
+    { id: 'openweb', group: 'tools', fa: 'fa-rotate-right', page: '/pages/device/plugins/openweb/index' },
 	{ id: 'route', group: 'tools', fa: 'fa-route', page: '/pages/device/apps/route/index' },
 	{ id: 'process', group: 'tools', fa: 'fa-microchip', page: '/pages/device/apps/process/index' },
 	{ id: 'startup', group: 'tools', fa: 'fa-power-off', page: '/pages/device/apps/startup/index' },
