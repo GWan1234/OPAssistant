@@ -47,7 +47,8 @@ const PLUGINS = [
 	{ id: 'cifs', i18n: 'cifs', config: 'cifs-mount', group: 'storage', fa: 'fa-hard-drive', page: '/pages/device/plugins/cifs-mount/index' },
 	{ id: 'usb-printer', i18n: 'usb_printer', config: 'usb_printer', group: 'storage', fa: 'fa-print', page: '/pages/device/plugins/usb-printer/index' },
 	{ id: 'autoreboot', i18n: 'autoreboot', config: 'autoreboot', group: 'system', fa: 'fa-clock', page: '/pages/device/plugins/autoreboot/index' },
-	{ id: 'passwall2', i18n: 'passwall2', config: 'passwall2', group: 'proxy', abbr: 'PW', page: '/pages/device/plugins/passwall2/index' }
+	{ id: 'passwall2', i18n: 'passwall2', config: 'passwall2', group: 'proxy', abbr: 'PW', page: '/pages/device/plugins/passwall2/index' },
+	{ id: 'openclash', i18n: 'openclash', config: 'openclash', group: 'proxy', abbr: 'OC', page: '/pages/device/plugins/openclash/index' }
 ]
 
 const GROUPS = ['tools', 'network', 'storage', 'system', 'proxy']

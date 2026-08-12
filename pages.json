@@ -157,6 +157,16 @@
 		        "enablePullDownRefresh": true
 		    }
 		},
+		
+		{
+		    "path" : "pages/device/plugins/openclash/index",
+		    "style" :
+		    {
+		        "navigationBarTitleText": "%openclash.title%",
+		        "enablePullDownRefresh": false
+		    }
+		},
+		
 		{
 		    "path" : "pages/device/plugins/cifs-mount/index",
 		    "style" :
