@@ -1,10 +1,9 @@
-
 import Crypto from './crypto.js'
 
 const DEVICE_LIST_KEY = 'device_list'
 const CURRENT_DEVICE_KEY = 'current_device'
 
-let _pluginsCache = null  // 已装 luci 插件探测缓存（会话级，切设备清空）
+let _pluginsCache = null // 已装 luci 插件探测缓存（会话级，切设备清空）
 
 const ERROR_CODES = {
 	NETWORK_ERROR: 4000,
@@ -67,7 +66,8 @@ class DeviceManager {
 			online: false,
 			sysauth: null,
 			createTime: new Date().toISOString(),
-			password: Crypto.encrypt(device.password)
+			// 防重复加密：只有明文才加密
+			password: Crypto.isEncrypted(device.password) ? device.password : Crypto.encrypt(device.password)
 		}
 		console.log("new device id is " + newDevice.id);
 		deviceList.push(newDevice)
@@ -82,8 +82,11 @@ class DeviceManager {
 		const index = deviceList.findIndex(device => device.id === deviceId)
 		if (index !== -1) {
 			const updatedDevice = { ...deviceList[index], ...deviceData }
+			// 只有当传入密码且不是加密串时才加密
 			if (deviceData.password !== undefined) {
-				updatedDevice.password = Crypto.encrypt(deviceData.password)
+				updatedDevice.password = Crypto.isEncrypted(deviceData.password) 
+					? deviceData.password 
+					: Crypto.encrypt(deviceData.password)
 			}
 			deviceList[index] = updatedDevice
 			return this.saveDeviceList(deviceList)
@@ -99,8 +102,11 @@ class DeviceManager {
 		const index = deviceList.findIndex(device => device.id === deviceId)
 		if (index !== -1) {
 			const updatedDevice = { ...deviceList[index], ...deviceData }
+			// 只有当传入密码且不是加密串时才加密
 			if (deviceData.password !== undefined) {
-				updatedDevice.password = Crypto.encrypt(deviceData.password)
+				updatedDevice.password = Crypto.isEncrypted(deviceData.password) 
+					? deviceData.password 
+					: Crypto.encrypt(deviceData.password)
 			}
 			deviceList[index] = updatedDevice
 			return this.saveDeviceList(deviceList)
@@ -123,7 +129,7 @@ class DeviceManager {
 	static getDeviceById(deviceId) {
 		const deviceList = this.getDeviceList()
 		const device = deviceList.find(device => device.id === deviceId)
-		if (device) {
+		if (device && device.password) {
 			device.password = Crypto.decrypt(device.password)
 		}
 		return device
@@ -135,7 +141,7 @@ class DeviceManager {
 	static getDeviceByIp(ip) {
 		const deviceList = this.getDeviceList()
 		const device = deviceList.find(device => device.ip === ip)
-		if (device) {
+		if (device && device.password) {
 			device.password = Crypto.decrypt(device.password)
 		}
 		return device
@@ -146,9 +152,12 @@ class DeviceManager {
 	 */
 	static setCurrentDevice(device) {
 		try {
-			_pluginsCache = null  // 切设备清空插件探测缓存
+			_pluginsCache = null // 切设备清空插件探测缓存
 			const deviceToStore = { ...device }
-			deviceToStore.password = Crypto.encrypt(device.password)
+			// 防重复加密：只有传入明文密码时才执行加密保存
+			if (device.password && !Crypto.isEncrypted(device.password)) {
+				deviceToStore.password = Crypto.encrypt(device.password)
+			}
 			uni.setStorageSync(CURRENT_DEVICE_KEY, deviceToStore)
 			return true
 		} catch (e) {
@@ -156,12 +165,14 @@ class DeviceManager {
 			return false
 		}
 	}
-	
 
+	/**
+	 * Get current device (global)
+	 */
 	static getCurrentDevice() {
 		try {
 			const device = uni.getStorageSync(CURRENT_DEVICE_KEY)
-			if (device) {
+			if (device && device.password) {
 				device.password = Crypto.decrypt(device.password)
 			}
 			return device
@@ -170,8 +181,10 @@ class DeviceManager {
 			return null
 		}
 	}
-	
 
+	/**
+	 * Clear current device (global)
+	 */
 	static clearCurrentDevice() {
 		try {
 			uni.removeStorageSync(CURRENT_DEVICE_KEY)
@@ -231,12 +244,10 @@ class DeviceManager {
 		
 		return null
 	}
-	
 
 	static isIPv6(host) {
-		return host.includes(':') && (host.split(':').length - 1) >= 2
+		return host && host.includes(':') && (host.split(':').length - 1) >= 2
 	}
-	
 
 	static formatHostForUrl(host) {
 		if (this.isIPv6(host)) {
@@ -286,6 +297,12 @@ class DeviceManager {
 		const formattedHost = this.formatHostForUrl(device.ip)
 		const url = `${protocol}://${formattedHost}:${device.port}/ubus`
 		console.log(`[DeviceManager] Login request URL: ${url}`)
+
+		// 获取解密后的明文密码进行登录
+		const plainPassword = Crypto.isEncrypted(device.password) 
+			? Crypto.decrypt(device.password) 
+			: device.password
+
 		const data = {
 			jsonrpc: "2.0",
 			id: 1,
@@ -296,12 +313,12 @@ class DeviceManager {
 				"login",
 				{
 					username: device.username,
-					password: Crypto.decrypt(device.password)
+					password: plainPassword
 				}
 			]
 		}
 		
-		console.log(`[DeviceManager] Login request data:`, JSON.stringify(data, null, 2))
+		console.log(`[DeviceManager] Login request data:`, JSON.stringify({ ...data, params: [data.params[0], data.params[1], data.params[2], { username: device.username, password: '***' }] }, null, 2))
 		
 		uni.request({
 			url: url,
@@ -418,7 +435,7 @@ class DeviceManager {
 	static checkAndLoginDevice(device, callback) {
 		console.log(`[DeviceManager] Checking device login status: ${device.name} (${device.ip})`)
 
-		if (device.sysauth) {
+		if (device && device.sysauth) {
 			console.log(`[DeviceManager] Device has valid session: ${device.name}`)
 			console.log(`[DeviceManager] Session value: ${device.sysauth}`)
 			
@@ -429,35 +446,36 @@ class DeviceManager {
 					sysauth: device.sysauth
 				})
 			}
-			return
+			return Promise.resolve({
+				success: true,
+				sysauth: device.sysauth
+			})
 		}
 
 		// No valid sysauth, try to login
 		console.log(`[DeviceManager] Device has no valid session, starting login: ${device.name}`)
-		this.loginDevice(device, (loginResult) => {
-			console.log(`[DeviceManager] Login result:`, {
-				success: loginResult.success,
-				errorCode: loginResult.errorCode,
-				message: loginResult.message
-			})
-			
-			if (loginResult.success) {
-				console.log(`[DeviceManager] Login successful, updating device status`)
-				if (callback) {
-					callback(loginResult)
-				}
-			} else {
-				console.log(`[DeviceManager] Login failed, setting device offline`)
-				// Update device offline status
-				this.updateDeviceById(device.id, { online: false })
-				if (callback) {
-					console.log(`[DeviceManager] Calling failure callback, error code: ${loginResult.errorCode}`)
-					callback({
+		return new Promise((resolve) => {
+			this.loginDevice(device, (loginResult) => {
+				console.log(`[DeviceManager] Login result:`, {
+					success: loginResult.success,
+					errorCode: loginResult.errorCode
+				})
+				
+				if (loginResult.success) {
+					console.log(`[DeviceManager] Login successful, updating device status`)
+					if (callback) callback(loginResult)
+					resolve(loginResult)
+				} else {
+					console.log(`[DeviceManager] Login failed, setting device offline`)
+					this.updateDeviceById(device.id, { online: false })
+					const res = {
 						success: false,
 						errorCode: loginResult.errorCode || ERROR_CODES.OTHER_ERROR
-					})
+					}
+					if (callback) callback(res)
+					resolve(res)
 				}
-			}
+			})
 		})
 	}
 	
@@ -516,8 +534,7 @@ class DeviceManager {
 		})
 	}
 
-	// DNS 预解析:历史设备的域名提前 GET 根 URL,触发系统 DNS 解析+缓存,
-	// 后续登录/探活命中缓存(快)。IPv4/IPv6 直连无需预热。App 启动调一次。
+	// DNS 预解析:历史设备的域名提前 GET 根 URL,触发系统 DNS 解析+缓存
 	static prefetchDns() {
 		const list = this.getDeviceList()
 		list.forEach(d => {
@@ -534,8 +551,6 @@ class DeviceManager {
 			})
 		})
 	}
-	
-
 }
 
-export default DeviceManager 
+export default DeviceManager

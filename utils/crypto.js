@@ -7,7 +7,7 @@
  */
 import CryptoJS from 'crypto-js'
 
-const SECRET = 'b9f419548a1a26381522a520f0cf15e8'   // 本地密码加密密钥(随机值),经 SHA256 派生为 32 字节 AES KEY
+const SECRET = 'b9f419548a1a26381522a520f0cf15e8'   // 本地密码加密密钥
 const ENCRYPTED_PREFIX = 'AES:'
 
 function deriveKey() {
@@ -18,13 +18,18 @@ class Crypto {
 
 	static encrypt(text) {
 		if (!text) return ''
+		// 幂等处理：如果是已加密字符串，不再重复加密
+		if (this.isEncrypted(text)) return text;
+		
 		try {
 			const iv = CryptoJS.lib.WordArray.random(16)
-			const encrypted = CryptoJS.AES.encrypt(text, deriveKey(), {
+			const key = deriveKey()
+			const encrypted = CryptoJS.AES.encrypt(text, key, {
 				iv: iv,
 				mode: CryptoJS.mode.CBC,
 				padding: CryptoJS.pad.Pkcs7
 			})
+			
 			// 拼接 IV + 密文，整体 base64
 			const combined = iv.clone().concat(encrypted.ciphertext)
 			return ENCRYPTED_PREFIX + CryptoJS.enc.Base64.stringify(combined)
@@ -35,21 +40,41 @@ class Crypto {
 	}
 
 	static decrypt(cipher) {
-		// 非 AES: 前缀（含旧版本 ENC: XOR 密文）原样返回 —— 旧密码将失效，需重新输入
 		if (!cipher || !cipher.startsWith(ENCRYPTED_PREFIX)) {
 			return cipher
 		}
 		try {
-			const combined = CryptoJS.enc.Base64.parse(cipher.substring(ENCRYPTED_PREFIX.length))
-			const words = combined.words
-			const iv = CryptoJS.lib.WordArray.create(words.slice(0, 4), 16)
-			const ciphertext = CryptoJS.lib.WordArray.create(words.slice(4), combined.sigBytes - 16)
+			// 提取 base64 部分
+			const base64Str = cipher.substring(ENCRYPTED_PREFIX.length)
+			const combined = CryptoJS.enc.Base64.parse(base64Str)
+			
+			// 标准提取 IV (前 16 字节 = 4 个 word)
+			const iv = CryptoJS.lib.WordArray.create(combined.words.slice(0, 4), 16)
+			
+			// 提取 Ciphertext (去除前 16 字节)
+			const ciphertextWords = combined.words.slice(4)
+			const ciphertextSigBytes = combined.sigBytes - 16
+			const ciphertext = CryptoJS.lib.WordArray.create(ciphertextWords, ciphertextSigBytes)
+			
 			const decrypted = CryptoJS.AES.decrypt(
 				CryptoJS.lib.CipherParams.create({ ciphertext: ciphertext }),
 				deriveKey(),
-				{ iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+				{ 
+					iv: iv, 
+					mode: CryptoJS.mode.CBC, 
+					padding: CryptoJS.pad.Pkcs7 
+				}
 			)
-			return decrypted.toString(CryptoJS.enc.Utf8)
+			
+			const result = decrypted.toString(CryptoJS.enc.Utf8)
+			
+			// 如果解密出来的字符串为空，说明解密失败（可能是旧密钥或数据损坏）
+			if (!result) {
+				console.warn('AES 解密结果为空，返回原密文')
+				return cipher
+			}
+			
+			return result
 		} catch (e) {
 			console.error('解密失败:', e)
 			return cipher
@@ -57,7 +82,7 @@ class Crypto {
 	}
 
 	static isEncrypted(text) {
-		return text && text.startsWith(ENCRYPTED_PREFIX)
+		return typeof text === 'string' && text.startsWith(ENCRYPTED_PREFIX)
 	}
 }
 
