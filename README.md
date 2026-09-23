@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> WrtCtrl 已用 Rust + Kotlin/Compose 重写为纯原生 Android 应用，请前往新仓库：
+>
+> **→ [github.com/wslinnn/WrtCtrl](https://github.com/wslinnn/WrtCtrl)**
+
 # WrtCtrl
 
 ![version](https://img.shields.io/badge/version-2.0.0-blue)
